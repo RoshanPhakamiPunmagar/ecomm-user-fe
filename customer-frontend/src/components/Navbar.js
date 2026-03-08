@@ -1,7 +1,16 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 function Navbar() {
+  const navigate = useNavigate();
   const isLoggedIn = !!localStorage.getItem("accessJWT");
+
+  const handleLogout = () => {
+    localStorage.removeItem("accessJWT");
+    localStorage.removeItem("refreshJWT");
+    toast.info("Logged out");
+    navigate("/login");
+  };
 
   return (
     <nav className="navbar navbar-expand-lg navbar-light bg-light">
@@ -21,6 +30,14 @@ function Navbar() {
                 <Link className="nav-link" to="/orders">
                   Orders
                 </Link>
+              </li>
+              <li className="nav-item">
+                <button
+                  className="btn btn-link nav-link"
+                  onClick={handleLogout}
+                >
+                  Logout
+                </button>
               </li>
             </>
           ) : (

@@ -10,7 +10,9 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("accessJWT");
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    // Some backends expect the raw token value in the Authorization header
+    // (no "Bearer " prefix). Keep it raw to match the backend examples.
+    config.headers.Authorization = `${token}`;
   }
   return config;
 });

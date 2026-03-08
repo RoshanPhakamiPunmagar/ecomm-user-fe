@@ -1,14 +1,17 @@
 import React, { useState } from "react";
-import api from "../../services/api";
+import api from "../services/api";
+import { toast } from "react-toastify";
 
 const OrderSummary = ({ cartItems = [], onOrderSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Calculate total amount
-  const totalAmount = cartItems.reduce((acc, item) => {
-    return acc + item.price * item.quantity;
-  }, 0);
+  // Calculate total
+  const totalAmount = cartItems.reduce(
+    (acc, item) =>
+      acc + (Number(item.price) || 0) * (Number(item.quantity) || 0),
+    0,
+  );
 
   const handlePlaceOrder = async () => {
     try {
@@ -20,10 +23,10 @@ const OrderSummary = ({ cartItems = [], onOrderSuccess }) => {
         return;
       }
 
-      // Match backend structure
+      // Important: use `productId` from cart (not _id)
       const orderPayload = {
         products: cartItems.map((item) => ({
-          productId: item._id, // make sure your cart item has _id
+          productId: item.productId,
           quantity: item.quantity,
         })),
       };
@@ -31,14 +34,13 @@ const OrderSummary = ({ cartItems = [], onOrderSuccess }) => {
       const { data } = await api.post("/orders", orderPayload);
 
       if (data?.status === "success") {
-        alert("Order placed successfully!");
         onOrderSuccess && onOrderSuccess(data.order);
       }
     } catch (err) {
       console.error(err);
-      setError(
-        err.response?.data?.message || "Failed to place order. Try again.",
-      );
+      const msg = err.response?.data?.message || "Failed to place order";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -56,7 +58,7 @@ const OrderSummary = ({ cartItems = [], onOrderSuccess }) => {
           <ul className="list-group mb-3">
             {cartItems.map((item) => (
               <li
-                key={item._id}
+                key={item.productId}
                 className="list-group-item d-flex justify-content-between align-items-center"
               >
                 <div>
@@ -64,7 +66,10 @@ const OrderSummary = ({ cartItems = [], onOrderSuccess }) => {
                   <small className="text-muted">Qty: {item.quantity}</small>
                 </div>
                 <span className="text-muted">
-                  ${item.price * item.quantity}
+                  $
+                  {(
+                    (Number(item.price) || 0) * (Number(item.quantity) || 0)
+                  ).toFixed(2)}
                 </span>
               </li>
             ))}
@@ -73,12 +78,12 @@ const OrderSummary = ({ cartItems = [], onOrderSuccess }) => {
           {/* Total */}
           <div className="d-flex justify-content-between mb-3">
             <strong>Total</strong>
-            <strong>${totalAmount.toFixed(2)}</strong>
+            <strong>${Number(totalAmount || 0).toFixed(2)}</strong>
           </div>
 
           {error && <p className="text-danger">{error}</p>}
 
-          {/* Place Order Button */}
+          {/* Place Order */}
           <button
             className="btn btn-primary w-100"
             onClick={handlePlaceOrder}

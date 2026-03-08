@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { toast } from "react-toastify";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -27,12 +28,13 @@ function LoginPage() {
       localStorage.setItem("accessJWT", res.data.tokens.accessJWT);
       localStorage.setItem("refreshJWT", res.data.tokens.refreshJWT);
 
-      alert("Login successful");
+      toast.success("Login successful");
 
       // Redirect to home
       navigate("/home");
     } catch (err) {
-      alert("Login failed");
+      const msg = err.response?.data?.message || "Login failed";
+      toast.error(msg);
     }
   };
 

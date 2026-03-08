@@ -1,97 +1,85 @@
 import React, { useEffect, useState } from "react";
 import api from "../services/api";
 
-const OrderHistoryPage = () => {
+function OrderHistoryPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const fetchOrders = async () => {
-    try {
-      const res = await api.get("/orders");
-      setOrders(res.data.orders || []);
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [error, setError] = useState("");
 
   useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get("/orders");
+        if (res.data?.status === "success") {
+          setOrders(res.data.orders);
+        } else {
+          setError("Failed to fetch orders");
+        }
+      } catch (err) {
+        console.error(err);
+        setError(err.response?.data?.message || "Something went wrong");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchOrders();
   }, []);
 
-  if (loading) {
+  if (loading) return <div className="container mt-5">Loading orders...</div>;
+  if (error) return <div className="container mt-5 text-danger">{error}</div>;
+  if (!orders.length)
     return (
-      <div className="container mt-4">
-        <h3>Loading your orders...</h3>
+      <div className="container mt-5 text-center">
+        <h4>No orders found 🛒</h4>
       </div>
     );
-  }
 
   return (
     <div className="container mt-4">
-      <h2 className="mb-4">My Order History</h2>
+      <h2 className="mb-4">My Orders</h2>
 
-      {orders.length === 0 ? (
-        <div className="alert alert-info">
-          You have not placed any orders yet.
-        </div>
-      ) : (
-        orders.map((order) => (
-          <div className="card mb-4 shadow-sm" key={order._id}>
-            <div className="card-header d-flex justify-content-between">
-              <div>
-                <strong>Order ID:</strong> {order._id}
-              </div>
-              <div>
-                <strong>Status:</strong>{" "}
-                <span className="badge bg-warning text-dark">
-                  {order.status}
-                </span>
-              </div>
-            </div>
+      {orders.map((order) => (
+        <React.Fragment key={order._id}>
+          <div className="card mb-3 p-3 shadow-sm">
+            <h5>Order ID: {order._id}</h5>
+            <p>
+              <strong>Status:</strong> {order.status}
+            </p>
+            <p>
+              <strong>Total:</strong> $
+              {Number(order.totalAmount || 0).toFixed(2)}
+            </p>
+            <p>
+              <strong>Ordered on:</strong>{" "}
+              {new Date(order.createdAt).toLocaleDateString()}
+            </p>
 
-            <div className="card-body">
-              <h5 className="mb-3">Products</h5>
-
+            <div>
+              <strong>Products:</strong>
               {order.products.map((item, index) => (
                 <div
                   key={index}
-                  className="d-flex justify-content-between border-bottom py-2"
+                  className="d-flex justify-content-between border-bottom py-1"
                 >
                   <div>
-                    <strong>Product ID:</strong> {item.productId}
-                    <br />
-                    <small>Quantity: {item.quantity}</small>
+                    {item.name} x {item.quantity}
                   </div>
-
                   <div>
-                    <strong>
-                      ${item.price ? item.price * item.quantity : "N/A"}
-                    </strong>
+                    $
+                    {(
+                      (Number(item.price) || 0) * (Number(item.quantity) || 0)
+                    ).toFixed(2)}
                   </div>
                 </div>
               ))}
-
-              <div className="text-end mt-3">
-                <h5>
-                  Total Amount:{" "}
-                  <span className="text-success">${order.totalAmount}</span>
-                </h5>
-              </div>
-            </div>
-
-            <div className="card-footer text-muted">
-              Placed on:{" "}
-              {order.createdAt
-                ? new Date(order.createdAt).toLocaleString()
-                : "N/A"}
             </div>
           </div>
-        ))
-      )}
+        </React.Fragment>
+      ))}
     </div>
   );
-};
+}
 
 export default OrderHistoryPage;

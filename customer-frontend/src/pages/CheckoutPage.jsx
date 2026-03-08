@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { toast } from "react-toastify";
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -19,9 +20,10 @@ const CheckoutPage = () => {
     phone: "",
   });
 
-  // Calculate total price
+  // Calculate total price (coerce to numbers)
   const totalAmount = cartItems.reduce(
-    (acc, item) => acc + item.price * item.quantity,
+    (acc, item) =>
+      acc + (Number(item.price) || 0) * (Number(item.quantity) || 0),
     0,
   );
 
@@ -58,8 +60,6 @@ const CheckoutPage = () => {
       });
 
       if (res.data.status === "success") {
-        alert("Order placed successfully!");
-
         // Clear cart after order
         localStorage.removeItem("cart");
         setCartItems([]);
@@ -69,7 +69,7 @@ const CheckoutPage = () => {
       }
     } catch (error) {
       console.error("Order error:", error);
-      alert(error.response?.data?.message || "Failed to place order");
+      toast.error(error.response?.data?.message || "Failed to place order");
     } finally {
       setLoading(false);
     }
@@ -154,7 +154,12 @@ const CheckoutPage = () => {
                   <br />
                   <small>Qty: {item.quantity}</small>
                 </div>
-                <div>${item.price * item.quantity}</div>
+                <div>
+                  $
+                  {(
+                    (Number(item.price) || 0) * (Number(item.quantity) || 0)
+                  ).toFixed(2)}
+                </div>
               </div>
             ))}
 

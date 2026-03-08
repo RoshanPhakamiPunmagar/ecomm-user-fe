@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import api from "../services/api";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 const SignupPage = () => {
   const [email, setEmail] = useState("");
@@ -14,13 +15,15 @@ const SignupPage = () => {
       const res = await api.post("/auth/signup", { email, password });
       // After successful signup API call
       if (res.data.status === "success") {
-        alert("Signup successful! Please verify your email.");
+        toast.success("Signup successful! Please verify your email.");
 
         // Redirect to login (recommended)
         navigate("/login");
       }
     } catch (err) {
-      setMessage(err.response?.data?.message || "Signup failed");
+      const msg = err.response?.data?.message || "Signup failed";
+      setMessage(msg);
+      toast.error(msg);
     }
   };
 

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import api from "../services/api";
 import { SERVER_URL } from "../services/api";
+import { toast } from "react-toastify";
 
 function ProductDetailPage() {
   const { id } = useParams();
@@ -34,11 +35,63 @@ function ProductDetailPage() {
     e.preventDefault();
 
     try {
-      await api.post(`/products/${id}/reviews`, review);
-      alert("Review submitted!");
-      window.location.reload();
+      const payload = {
+        productId: id,
+        ...review,
+        rating: Number(review.rating),
+      };
+      const res = await api.post(`/reviews`, payload);
+      toast.success(res?.data?.message || "Review submitted!");
+      // update list locally instead of full reload
+      setProduct((prev) => ({
+        ...prev,
+        reviews: [
+          {
+            rating: payload.rating,
+            comment: payload.comment,
+            createdAt: new Date().toISOString(),
+            user: { name: "You" },
+          },
+          ...(prev.reviews || []),
+        ],
+      }));
+      setReview({ rating: 5, comment: "" });
     } catch (err) {
-      alert("Failed to submit review");
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to submit review";
+
+      // If backend route is missing (Cannot POST /...), fall back to adding review locally
+      const backendHtml = err?.response?.data;
+      const backendMissing =
+        err?.response?.status === 404 ||
+        err?.response?.status === 405 ||
+        (typeof backendHtml === "string" &&
+          backendHtml.includes("Cannot POST"));
+
+      if (backendMissing) {
+        const payload = { ...review, rating: Number(review.rating) };
+        const newRev = {
+          rating: payload.rating,
+          comment: payload.comment,
+          createdAt: new Date().toISOString(),
+          user: { name: "You" },
+        };
+
+        setProduct((prev) => {
+          const reviews = [newRev, ...(prev.reviews || [])];
+          const avg =
+            reviews.reduce((s, r) => s + Number(r.rating), 0) / reviews.length;
+          return { ...prev, reviews, rating: avg };
+        });
+
+        setReview({ rating: 5, comment: "" });
+        toast.info("Review saved locally (backend route missing).");
+        return;
+      }
+
+      toast.error(msg);
     }
   };
 
@@ -63,11 +116,16 @@ function ProductDetailPage() {
     }
 
     localStorage.setItem("cart", JSON.stringify(cart));
-    alert("Product added to cart!");
+    toast.success("Product added to cart");
   };
 
   return (
     <div className="container mt-5">
+      <div className="mb-3">
+        <Link to="/home" className="btn btn-link">
+          ← Back to products
+        </Link>
+      </div>
       <div className="row">
         {/* Product Info */}
         <div className="col-md-6">
@@ -95,6 +153,14 @@ function ProductDetailPage() {
           <button className="btn btn-primary mt-3" onClick={handleAddToCart}>
             Add to Cart
           </button>
+          <div className="mt-2">
+            <Link to="/home" className="btn btn-sm btn-outline-secondary me-2">
+              Continue shopping
+            </Link>
+            <Link to="/cart" className="btn btn-sm btn-outline-primary">
+              View cart
+            </Link>
+          </div>
         </div>
       </div>
 

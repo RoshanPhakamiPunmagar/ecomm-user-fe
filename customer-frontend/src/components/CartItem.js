@@ -1,68 +1,56 @@
 import React from "react";
 
-const CartItem = ({ item, onIncrease, onDecrease, onRemove }) => {
-  // If your backend only sends image filename like "pixel8-front.jpg"
-  const imageUrl = item?.images?.[0]
-    ? `http://localhost:3000/uploads/${item.images[0]}`
-    : "https://via.placeholder.com/100";
+const SERVER_URL = "http://localhost:3000";
 
+function CartItem({ item, onIncrease, onDecrease, onRemove }) {
   return (
-    <div className="card mb-3 shadow-sm">
-      <div className="row g-0 align-items-center p-2">
-        {/* Product Image */}
-        <div className="col-md-2 text-center">
-          <img
-            src={imageUrl}
-            alt={item.name}
-            className="img-fluid rounded"
-            style={{ maxHeight: "80px", objectFit: "contain" }}
-          />
-        </div>
+    <div className="d-flex align-items-center mb-3 border-bottom pb-3">
+      {/* Product Image */}
+      <img
+        src={
+          item.image
+            ? `${SERVER_URL}/uploads/${item.image}`
+            : "https://via.placeholder.com/100"
+        }
+        alt={item.name}
+        style={{
+          width: "100px",
+          height: "100px",
+          objectFit: "cover",
+          marginRight: "1rem",
+        }}
+      />
 
-        {/* Product Info */}
-        <div className="col-md-4">
-          <h6 className="mb-1">{item.name}</h6>
-          <p className="text-muted mb-0">Price: ${item.price}</p>
-        </div>
+      <div className="flex-grow-1">
+        <h6>{item.name}</h6>
+        <p className="mb-1">
+          ${Number(item.price || 0).toFixed(2)} x {item.quantity} = $
+          {((Number(item.price) || 0) * (Number(item.quantity) || 0)).toFixed(
+            2,
+          )}
+        </p>
 
         {/* Quantity Controls */}
-        <div className="col-md-3 d-flex align-items-center justify-content-center">
+        <div>
           <button
-            className="btn btn-outline-secondary btn-sm"
-            onClick={() => onDecrease(item)}
+            className="btn btn-sm btn-outline-primary me-2"
+            onClick={onDecrease}
           >
             -
           </button>
-
-          <span className="mx-3 fw-bold">{item.quantity}</span>
-
           <button
-            className="btn btn-outline-secondary btn-sm"
-            onClick={() => onIncrease(item)}
+            className="btn btn-sm btn-outline-primary me-2"
+            onClick={onIncrease}
           >
             +
           </button>
-        </div>
-
-        {/* Total Price */}
-        <div className="col-md-2 text-center">
-          <p className="fw-bold mb-0">
-            ${(item.price * item.quantity).toFixed(2)}
-          </p>
-        </div>
-
-        {/* Remove Button */}
-        <div className="col-md-1 text-end">
-          <button
-            className="btn btn-danger btn-sm"
-            onClick={() => onRemove(item)}
-          >
-            ✕
+          <button className="btn btn-sm btn-outline-danger" onClick={onRemove}>
+            Remove
           </button>
         </div>
       </div>
     </div>
   );
-};
+}
 
 export default CartItem;
