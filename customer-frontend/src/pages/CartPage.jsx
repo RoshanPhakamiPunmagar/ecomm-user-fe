@@ -1,19 +1,20 @@
+// src/pages/CartPage.jsx
 import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import CartItem from "../components/CartItem";
 import OrderSummary from "../components/OrderSummary";
-import { useNavigate } from "react-router-dom";
 
 function CartPage() {
   const [cartItems, setCartItems] = useState([]);
   const navigate = useNavigate();
 
-  // Load cart from localStorage on page load
+  // Load cart from localStorage on mount
   useEffect(() => {
     const savedCart = localStorage.getItem("cart");
     if (savedCart) setCartItems(JSON.parse(savedCart));
   }, []);
 
-  // Save cart to localStorage whenever it changes
+  // Save cart whenever it changes
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cartItems));
   }, [cartItems]);
@@ -42,33 +43,63 @@ function CartPage() {
 
   // Remove item
   const removeItem = (productId) => {
-    const updatedCart = cartItems.filter(
-      (item) => item.productId !== productId,
-    );
-    setCartItems(updatedCart);
+    setCartItems(cartItems.filter((item) => item.productId !== productId));
   };
 
-  // Clear cart after successful order
+  // Clear cart after order
   const handleOrderSuccess = () => {
     setCartItems([]);
     localStorage.removeItem("cart");
-    // Redirect to order history without showing an alert
-    navigate("/orders");
+  };
+
+  // Calculate total amount in cents
+  const totalAmountCents = cartItems.reduce(
+    (sum, item) => sum + item.price * item.quantity * 100,
+    0,
+  );
+
+  // Navigate to checkout page
+  const handleProceedToCheckout = () => {
+    if (cartItems.length === 0) return;
+    // Optionally, store total or cart in localStorage if needed by checkout
+    navigate("/checkout");
   };
 
   return (
     <div className="container mt-4">
+      {/* Breadcrumb */}
+      <nav aria-label="breadcrumb">
+        <ol className="breadcrumb">
+          <li className="breadcrumb-item">
+            <Link to="/home">Home</Link>
+          </li>
+          <li className="breadcrumb-item active" aria-current="page">
+            Cart
+          </li>
+        </ol>
+      </nav>
+
+      {/* Continue Shopping */}
+      <div className="mb-3">
+        <Link to="/home" className="btn btn-outline-primary">
+          ← Continue Shopping
+        </Link>
+      </div>
+
       <h2 className="mb-4">My Cart</h2>
 
       {cartItems.length === 0 ? (
         <div className="text-center mt-5">
           <h4>Your cart is empty 🛒</h4>
           <p className="text-muted">Add products to cart to see them here.</p>
+          <Link to="/home" className="btn btn-primary mt-3">
+            Shop Now
+          </Link>
         </div>
       ) : (
         <div className="row">
           {/* Cart Items */}
-          <div className="col-md-8">
+          <div className="col-md-8 mb-4">
             <div className="card p-3 shadow-sm">
               <h5 className="mb-3">Cart Items</h5>
               {cartItems.map((item) => (
@@ -89,6 +120,15 @@ function CartPage() {
               cartItems={cartItems}
               onOrderSuccess={handleOrderSuccess}
             />
+            <button
+              className="btn btn-success w-100 mt-3"
+              onClick={handleProceedToCheckout}
+            >
+              Proceed to Checkout
+            </button>
+            <p className="text-muted mt-2">
+              Total: ${(totalAmountCents / 100).toFixed(2)} AUD
+            </p>
           </div>
         </div>
       )}

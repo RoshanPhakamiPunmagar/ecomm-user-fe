@@ -11,6 +11,7 @@ function OrderHistoryPage() {
       try {
         setLoading(true);
         const res = await api.get("/orders");
+
         if (res.data?.status === "success") {
           setOrders(res.data.orders);
         } else {
@@ -27,45 +28,73 @@ function OrderHistoryPage() {
     fetchOrders();
   }, []);
 
-  if (loading) return <div className="container mt-5">Loading orders...</div>;
-  if (error) return <div className="container mt-5 text-danger">{error}</div>;
+  if (loading)
+    return (
+      <div className="container text-center mt-5">
+        <div className="spinner-border text-primary"></div>
+        <p className="mt-2">Loading orders...</p>
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="container mt-5 text-center text-danger">{error}</div>
+    );
+
   if (!orders.length)
     return (
       <div className="container mt-5 text-center">
         <h4>No orders found 🛒</h4>
+        <p className="text-muted">Start shopping to see your orders here.</p>
       </div>
     );
 
   return (
-    <div className="container mt-4">
-      <h2 className="mb-4">My Orders</h2>
+    <div className="container mt-5">
+      <h2 className="fw-bold mb-4">My Orders</h2>
 
       {orders.map((order) => (
-        <React.Fragment key={order._id}>
-          <div className="card mb-3 p-3 shadow-sm">
-            <h5>Order ID: {order._id}</h5>
-            <p>
-              <strong>Status:</strong> {order.status}
-            </p>
-            <p>
-              <strong>Total:</strong> $
-              {Number(order.totalAmount || 0).toFixed(2)}
-            </p>
-            <p>
-              <strong>Ordered on:</strong>{" "}
-              {new Date(order.createdAt).toLocaleDateString()}
-            </p>
+        <div key={order._id} className="card shadow-sm mb-4">
+          <div className="card-body">
+            {/* Order Header */}
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <h6 className="mb-1">Order ID</h6>
+                <small className="text-muted">{order._id}</small>
+              </div>
 
+              <span className="badge bg-success">{order.status}</span>
+            </div>
+
+            {/* Order Info */}
+            <div className="row mb-3">
+              <div className="col-md-4">
+                <strong>Total</strong>
+                <p className="text-success">
+                  ${Number(order.totalAmount || 0).toFixed(2)}
+                </p>
+              </div>
+
+              <div className="col-md-4">
+                <strong>Date</strong>
+                <p>{new Date(order.createdAt).toLocaleDateString()}</p>
+              </div>
+            </div>
+
+            {/* Products */}
             <div>
-              <strong>Products:</strong>
+              <strong>Products</strong>
+
               {order.products.map((item, index) => (
                 <div
                   key={index}
-                  className="d-flex justify-content-between border-bottom py-1"
+                  className="d-flex justify-content-between border-bottom py-2"
                 >
                   <div>
-                    {item.name} x {item.quantity}
+                    {item.name}
+                    <small className="text-muted"> x {item.quantity}</small>
                   </div>
+
                   <div>
                     $
                     {(
@@ -76,7 +105,7 @@ function OrderHistoryPage() {
               ))}
             </div>
           </div>
-        </React.Fragment>
+        </div>
       ))}
     </div>
   );

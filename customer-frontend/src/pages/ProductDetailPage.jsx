@@ -6,16 +6,14 @@ import { toast } from "react-toastify";
 
 function ProductDetailPage() {
   const { id } = useParams();
-
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [review, setReview] = useState({
-    rating: 5,
-    comment: "",
-  });
+  const [review, setReview] = useState({ rating: 0, comment: "" });
+  const [submitting, setSubmitting] = useState(false);
 
   const isLoggedIn = !!localStorage.getItem("accessJWT");
 
+  // Fetch product details
   useEffect(() => {
     const fetchProduct = async () => {
       try {
@@ -23,89 +21,20 @@ function ProductDetailPage() {
         setProduct(res.data.product);
       } catch (err) {
         console.error(err);
+        toast.error("Failed to fetch product details");
       } finally {
         setLoading(false);
       }
     };
-
     fetchProduct();
   }, [id]);
 
-  const handleReviewSubmit = async (e) => {
-    e.preventDefault();
-
-    try {
-      const payload = {
-        productId: id,
-        ...review,
-        rating: Number(review.rating),
-      };
-      const res = await api.post(`/reviews`, payload);
-      toast.success(res?.data?.message || "Review submitted!");
-      // update list locally instead of full reload
-      setProduct((prev) => ({
-        ...prev,
-        reviews: [
-          {
-            rating: payload.rating,
-            comment: payload.comment,
-            createdAt: new Date().toISOString(),
-            user: { name: "You" },
-          },
-          ...(prev.reviews || []),
-        ],
-      }));
-      setReview({ rating: 5, comment: "" });
-    } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.message ||
-        "Failed to submit review";
-
-      // If backend route is missing (Cannot POST /...), fall back to adding review locally
-      const backendHtml = err?.response?.data;
-      const backendMissing =
-        err?.response?.status === 404 ||
-        err?.response?.status === 405 ||
-        (typeof backendHtml === "string" &&
-          backendHtml.includes("Cannot POST"));
-
-      if (backendMissing) {
-        const payload = { ...review, rating: Number(review.rating) };
-        const newRev = {
-          rating: payload.rating,
-          comment: payload.comment,
-          createdAt: new Date().toISOString(),
-          user: { name: "You" },
-        };
-
-        setProduct((prev) => {
-          const reviews = [newRev, ...(prev.reviews || [])];
-          const avg =
-            reviews.reduce((s, r) => s + Number(r.rating), 0) / reviews.length;
-          return { ...prev, reviews, rating: avg };
-        });
-
-        setReview({ rating: 5, comment: "" });
-        toast.info("Review saved locally (backend route missing).");
-        return;
-      }
-
-      toast.error(msg);
-    }
-  };
-
-  if (loading) return <div className="container mt-5">Loading...</div>;
-  if (!product) return <div className="container mt-5">Not found</div>;
-
   const handleAddToCart = () => {
     const cart = JSON.parse(localStorage.getItem("cart")) || [];
-
     const existingItem = cart.find((item) => item.productId === product._id);
 
-    if (existingItem) {
-      existingItem.quantity += 1;
-    } else {
+    if (existingItem) existingItem.quantity += 1;
+    else
       cart.push({
         productId: product._id,
         name: product.name,
@@ -113,52 +42,138 @@ function ProductDetailPage() {
         image: product.images?.[0],
         quantity: 1,
       });
-    }
 
     localStorage.setItem("cart", JSON.stringify(cart));
-    toast.success("Product added to cart");
+    toast.success("Product added to cart 🛒");
   };
+
+  // Submit review
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    if (!review.comment.trim() || review.rating === 0) {
+      toast.error("Please provide rating and comment");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const token = localStorage.getItem("accessJWT");
+      if (!token) throw new Error("You must be logged in");
+
+      const payload = {
+        productId: id,
+        rating: review.rating,
+        comment: review.comment,
+      };
+
+      const res = await api.post("/reviews", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      toast.success(res?.data?.message || "Review submitted!");
+
+      // Update UI locally
+      setProduct((prev) => ({
+        ...prev,
+        reviews: [
+          {
+            rating: review.rating,
+            comment: review.comment,
+            createdAt: new Date().toISOString(),
+            user: { name: "You" },
+          },
+          ...(prev.reviews || []),
+        ],
+      }));
+
+      setReview({ rating: 0, comment: "" });
+    } catch (err) {
+      console.error(err);
+      toast.error(
+        err.response?.data?.message || err.message || "Failed to submit review",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Star rating UI
+  const renderStars = (currentRating, setRatingFn) => {
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      stars.push(
+        <span
+          key={i}
+          onClick={() => setRatingFn(i)}
+          style={{
+            cursor: "pointer",
+            color: i <= currentRating ? "#ffc107" : "#e4e5e9",
+            fontSize: "1.5rem",
+          }}
+        >
+          ★
+        </span>,
+      );
+    }
+    return stars;
+  };
+
+  if (loading)
+    return (
+      <div className="container text-center mt-5">
+        <div className="spinner-border text-primary"></div>
+      </div>
+    );
+
+  if (!product) return <div className="container mt-5">Product not found</div>;
 
   return (
     <div className="container mt-5">
-      <div className="mb-3">
-        <Link to="/home" className="btn btn-link">
-          ← Back to products
-        </Link>
-      </div>
+      <Link to="/home" className="btn btn-link mb-3">
+        ← Back to products
+      </Link>
+
       <div className="row">
-        {/* Product Info */}
+        {/* Product Image */}
         <div className="col-md-6">
-          <img
-            src={
-              product.images?.length
-                ? `${SERVER_URL}/uploads/${product.images[0]}`
-                : "https://via.placeholder.com/400"
-            }
-            alt={product.name}
-            className="img-fluid rounded"
-          />
+          <div className="card shadow-sm">
+            <img
+              src={
+                product.images?.length
+                  ? `${SERVER_URL}/uploads/${product.images[0]}`
+                  : "https://via.placeholder.com/500"
+              }
+              alt={product.name}
+              className="img-fluid rounded"
+            />
+          </div>
         </div>
 
+        {/* Product Info */}
         <div className="col-md-6">
-          <h2>{product.name}</h2>
-          <h4 className="text-success">${product.price}</h4>
-          <p>{product.description}</p>
-
+          <h2 className="fw-bold">{product.name}</h2>
+          <h3 className="text-success mb-3">${product.price}</h3>
+          <p className="text-muted">{product.description}</p>
           <p>
-            ⭐ {product.rating || 0} / 5 ({product.reviews?.length || 0}{" "}
-            reviews)
+            ⭐ {product.rating || 0} / 5
+            <span className="text-muted ms-2">
+              ({product.reviews?.length || 0} reviews)
+            </span>
           </p>
 
-          <button className="btn btn-primary mt-3" onClick={handleAddToCart}>
-            Add to Cart
+          <button
+            className="btn btn-primary btn-lg mt-3"
+            onClick={handleAddToCart}
+          >
+            🛒 Add to Cart
           </button>
-          <div className="mt-2">
-            <Link to="/home" className="btn btn-sm btn-outline-secondary me-2">
-              Continue shopping
+
+          <div className="mt-3">
+            <Link to="/cart" className="btn btn-outline-primary me-2">
+              View Cart
             </Link>
-            <Link to="/cart" className="btn btn-sm btn-outline-primary">
-              View cart
+            <Link to="/home" className="btn btn-outline-secondary">
+              Continue Shopping
             </Link>
           </div>
         </div>
@@ -166,15 +181,14 @@ function ProductDetailPage() {
 
       {/* Reviews Section */}
       <div className="mt-5">
-        <h4>Customer Reviews</h4>
-
-        {product.reviews && product.reviews.length > 0 ? (
+        <h4 className="mb-4">Customer Reviews</h4>
+        {product.reviews?.length ? (
           product.reviews.map((rev, index) => (
-            <div key={index} className="border p-3 mb-3 rounded">
+            <div key={index} className="card p-3 mb-3 shadow-sm">
               <strong>{rev.user?.name || "User"}</strong>
-              <p>⭐ {rev.rating}</p>
-              <p>{rev.comment}</p>
-              <small className="text-muted">
+              <p className="mb-1">{renderStars(rev.rating, () => {})}</p>
+              <p className="text-muted">{rev.comment}</p>
+              <small className="text-secondary">
                 {new Date(rev.createdAt).toLocaleDateString()}
               </small>
             </div>
@@ -184,29 +198,19 @@ function ProductDetailPage() {
         )}
       </div>
 
-      {/* Submit Review */}
+      {/* Write Review */}
       {isLoggedIn && (
-        <div className="mt-4">
+        <div className="mt-5">
           <h5>Write a Review</h5>
-
           <form onSubmit={handleReviewSubmit}>
             <div className="mb-3">
               <label>Rating</label>
-              <select
-                className="form-control"
-                value={review.rating}
-                onChange={(e) =>
-                  setReview({ ...review, rating: e.target.value })
-                }
-              >
-                {[1, 2, 3, 4, 5].map((num) => (
-                  <option key={num} value={num}>
-                    {num}
-                  </option>
-                ))}
-              </select>
+              <div>
+                {renderStars(review.rating, (r) =>
+                  setReview({ ...review, rating: r }),
+                )}
+              </div>
             </div>
-
             <div className="mb-3">
               <label>Comment</label>
               <textarea
@@ -218,9 +222,12 @@ function ProductDetailPage() {
                 }
               ></textarea>
             </div>
-
-            <button type="submit" className="btn btn-success">
-              Submit Review
+            <button
+              className="btn btn-success"
+              type="submit"
+              disabled={submitting}
+            >
+              {submitting ? "Submitting..." : "Submit Review"}
             </button>
           </form>
         </div>

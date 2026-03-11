@@ -6,7 +6,6 @@ const OrderSummary = ({ cartItems = [], onOrderSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Calculate total
   const totalAmount = cartItems.reduce(
     (acc, item) =>
       acc + (Number(item.price) || 0) * (Number(item.quantity) || 0),
@@ -23,7 +22,6 @@ const OrderSummary = ({ cartItems = [], onOrderSuccess }) => {
         return;
       }
 
-      // Important: use `productId` from cart (not _id)
       const orderPayload = {
         products: cartItems.map((item) => ({
           productId: item.productId,
@@ -34,6 +32,7 @@ const OrderSummary = ({ cartItems = [], onOrderSuccess }) => {
       const { data } = await api.post("/orders", orderPayload);
 
       if (data?.status === "success") {
+        toast.success("Order placed successfully!");
         onOrderSuccess && onOrderSuccess(data.order);
       }
     } catch (err) {
@@ -47,8 +46,8 @@ const OrderSummary = ({ cartItems = [], onOrderSuccess }) => {
   };
 
   return (
-    <div className="card shadow p-4">
-      <h4 className="mb-3">Order Summary</h4>
+    <div className="card shadow-sm rounded p-4">
+      <h4 className="mb-3 fw-bold">Order Summary</h4>
 
       {cartItems.length === 0 ? (
         <p className="text-muted">No items in cart</p>
@@ -59,7 +58,7 @@ const OrderSummary = ({ cartItems = [], onOrderSuccess }) => {
             {cartItems.map((item) => (
               <li
                 key={item.productId}
-                className="list-group-item d-flex justify-content-between align-items-center"
+                className="list-group-item d-flex justify-content-between align-items-center hover-bg rounded mb-2"
               >
                 <div>
                   <h6 className="my-0">{item.name}</h6>
@@ -76,16 +75,16 @@ const OrderSummary = ({ cartItems = [], onOrderSuccess }) => {
           </ul>
 
           {/* Total */}
-          <div className="d-flex justify-content-between mb-3">
+          <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
             <strong>Total</strong>
-            <strong>${Number(totalAmount || 0).toFixed(2)}</strong>
+            <strong className="text-success">${totalAmount.toFixed(2)}</strong>
           </div>
 
           {error && <p className="text-danger">{error}</p>}
 
           {/* Place Order */}
           <button
-            className="btn btn-primary w-100"
+            className="btn btn-primary w-100 py-2 fw-bold"
             onClick={handlePlaceOrder}
             disabled={loading}
           >
@@ -93,6 +92,16 @@ const OrderSummary = ({ cartItems = [], onOrderSuccess }) => {
           </button>
         </>
       )}
+
+      {/* CSS Hover effect */}
+      <style>
+        {`
+          .hover-bg:hover {
+            background-color: #f8f9fa;
+            transition: 0.2s ease-in-out;
+          }
+        `}
+      </style>
     </div>
   );
 };
